@@ -605,12 +605,6 @@
       { id: 'pluto', name: '冥王星', glyph: '♇', color: '#93356b', theme: '深い変容や再生がテーマ。人生の転機や、内面の大きな変化と結びつけて語られます。', role: '深い変容・本気になるテーマ' }
     ];
     var KIND_NAME = { MC: 'MC線', IC: 'IC線', ASC: 'ASC線', DSC: 'DSC線' };
-    var KIND_MEANING = {
-      MC: '出生時にこの天体が天頂（MC）にあった線。仕事や社会的な顔、人生の方向性にその天体のテーマが表れやすいとされます。',
-      IC: '出生時にこの天体が天底（IC）にあった線。家庭や住まい、心の土台にその天体のテーマが表れやすいとされます。',
-      ASC: '出生時にこの天体が東の地平線（ASC）から昇っていた線。その土地での印象や振る舞い、出会い方にテーマが表れやすいとされます。',
-      DSC: '出生時にこの天体が西の地平線（DSC）へ沈んでいた線。パートナーや対人関係を通してテーマが表れやすいとされます。'
-    };
     var SIGNS = ['牡羊座', '牡牛座', '双子座', '蟹座', '獅子座', '乙女座', '天秤座', '蠍座', '射手座', '山羊座', '水瓶座', '魚座'];
     var SIGN_INFO = [
       { name: '牡羊座', element: '火', quality: '活動', keywords: '情熱・率直・スピード', personality: '思い立ったらまず動く、情熱的で率直な質を持ちます。競争や新しい挑戦で力が湧き、裏表のない真っ直ぐさが持ち味です。一方で、せっかちになったり勢い余ったりする場面では、一呼吸置くことが鍵になります。', asc: '第一印象は明るく行動的。自分から場を開いていくタイプに見られやすいとされます。' },
@@ -636,6 +630,11 @@
     PLANETS.forEach(function (p) { state.visible[p.id] = true; });
     var mapHandle = null;
     function $(id) { return document.getElementById(id); }
+    function escHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
     function fmtLon(lon) {
       if (lon === null || lon === undefined || isNaN(lon)) return '—';
       return (lon >= 0 ? '東経 ' : '西経 ') + Math.abs(lon).toFixed(1) + '°';
@@ -861,6 +860,10 @@
       var i = p.theme.indexOf('がテーマ');
       return i > 0 ? p.theme.slice(0, i) : p.theme;
     }
+    function themeDetail(p) {
+      var i = p.theme.indexOf('がテーマ。');
+      return i >= 0 ? p.theme.slice(i + 5) : '';
+    }
     function strengthWord(d) {
       if (d <= 2) return 'とても強く';
       if (d <= 4) return '強く';
@@ -897,28 +900,29 @@
       results.sort(function (a, b) { return a.d - b.d; });
       var near = results.filter(function (r) { return r.d <= 8; });
       var placeName = state.check.name;
+      var placeNameHtml = escHtml(placeName);
       // 結果：近いラインをまとめた、この場所についての読みを先に書く
       var resultBox = document.createElement('div');
       resultBox.className = 'place-result';
       if (near.length) {
         var top = near[0];
-        var mainText = '「' + placeName + '」は、' + shortTheme(top.p) + 'がテーマになる場所です。' +
-          '最も近い' + top.p.name + ' ' + KIND_NAME[top.kind] + '（約 ' + Math.round(top.d * 111.2) + ' km・' + top.d.toFixed(1) + '°）の影響で、' + combinedSentence(top);
+        var mainText = '「' + placeNameHtml + '」では、' + combinedSentence(top) +
+          '最も近いラインは' + top.p.name + ' ' + KIND_NAME[top.kind] + '（約 ' + Math.round(top.d * 111.2) + ' km・' + top.d.toFixed(1) + '°）です。';
         var subText;
         if (near.length >= 2) {
           var second = near[1];
           subText = 'あわせて' + second.p.name + ' ' + KIND_NAME[second.kind] + '（約 ' + Math.round(second.d * 111.2) + ' km）も範囲内にあり、' +
             KIND_PLACE[second.kind] + 'の面では' + shortTheme(second.p) + 'のテーマも重なります。' +
-            '中心になるのは最も近い' + top.p.name + 'のテーマで、近いライン全' + near.length + '本の内訳は下の通りです。';
+            '近いライン全' + near.length + '本を、近い順に下に並べています。';
         } else {
-          subText = '8°以内にあるラインはこの1本だけです。内訳は下の通りです。';
+          subText = '8°以内にあるラインはこの1本だけです。';
         }
-        resultBox.innerHTML = '<div class="pr-label">結果 ― 「' + placeName + '」について</div>' +
+        resultBox.innerHTML = '<div class="pr-label">結果 ― 「' + placeNameHtml + '」について</div>' +
           '<p class="pr-main">' + mainText + '</p><p class="pr-sub">' + subText + '</p>';
       } else {
         var closest = results[0];
-        resultBox.innerHTML = '<div class="pr-label">結果 ― 「' + placeName + '」について</div>' +
-          '<p class="pr-main">「' + placeName + '」は、特定の星のテーマが強く表れる場所ではありません。</p>' +
+        resultBox.innerHTML = '<div class="pr-label">結果 ― 「' + placeNameHtml + '」について</div>' +
+          '<p class="pr-main">「' + placeNameHtml + '」は、特定の星のテーマが強く表れる場所ではありません。</p>' +
           '<p class="pr-sub">8°以内にラインはなく、最も近い' + closest.p.name + ' ' + KIND_NAME[closest.kind] + 'でも約 ' + Math.round(closest.d * 111.2) + ' km（' + closest.d.toFixed(1) + '°）離れています。特定の星の影響に振り回されにくい場所として読めます。参考に、最も近い3本を下に載せます。</p>';
       }
       box.appendChild(resultBox);
@@ -935,13 +939,17 @@
       near.forEach(function (r) {
         var div = document.createElement('div');
         div.className = 'near-item';
+        var detail = themeDetail(r.p);
         div.innerHTML = '<div class="near-head"><span class="pdot" style="background:' + r.p.color + '"></span>' +
           '<span class="pname">' + r.p.glyph + ' ' + r.p.name + '</span><span class="kind">' + KIND_NAME[r.kind] + '</span>' +
           '<span class="dist">約 ' + Math.round(r.d * 111.2) + ' km（' + r.d.toFixed(1) + '°）</span></div>' +
-          '<p class="combined"><strong>この場所では：</strong>' + combinedSentence(r) + '</p>' +
-          '<p>' + r.p.theme + '</p><p>' + KIND_MEANING[r.kind] + '</p>';
+          '<p class="combined"><strong>この場所では：</strong>' + combinedSentence(r) + (detail ? ' ' + detail : '') + '</p>';
         box.appendChild(div);
       });
+      var kindNote = document.createElement('p');
+      kindNote.className = 'note';
+      kindNote.textContent = '※ 線の種類 ― MC線：出生時に天体が天頂にあった線／IC線：天底にあった線／ASC線：東の地平線から昇っていた線／DSC線：西の地平線へ沈んでいた線。';
+      box.appendChild(kindNote);
     }
 
     /* ===== 性質リーディング ===== */
